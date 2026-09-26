@@ -4,26 +4,41 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
 	gax "github.com/googleapis/gax-go/v2"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/scuba-plaza/arabic-tts/audio"
 )
 
 type fakeSynthesizer struct {
-	mu       sync.Mutex
-	requests []*texttospeechpb.SynthesizeSpeechRequest
-	voices   []*texttospeechpb.Voice
-	err      error
+	mu        sync.Mutex
+	requests  []*texttospeechpb.SynthesizeSpeechRequest
+	voices    []*texttospeechpb.Voice
+	err       error
+	transient []error
+	calls     int
 }
 
 func (f *fakeSynthesizer) SynthesizeSpeech(_ context.Context, req *texttospeechpb.SynthesizeSpeechRequest, _ ...gax.CallOption) (*texttospeechpb.SynthesizeSpeechResponse, error) {
+	f.mu.Lock()
+	f.calls++
+	if len(f.transient) > 0 {
+		err := f.transient[0]
+		f.transient = f.transient[1:]
+		f.mu.Unlock()
+		return nil, err
+	}
+	f.mu.Unlock()
 	if f.err != nil {
 		return nil, f.err
 	}
@@ -253,5 +268,52 @@ func TestListVoicesSortsAndFilters(t *testing.T) {
 	}
 	if len(filtered) != 1 || filtered[0].Name != "ar-XA-Wavenet-B" {
 		t.Errorf("case-insensitive filter failed: %+v", filtered)
+	}
+}
+
+func fastRetries(t *testing.T) {
+	t.Helper()
+	saved := retryBase
+	retryBase = time.Millisecond
+	t.Cleanup(func() { retryBase = saved })
+}
+
+func TestSynthesizeRetriesQuotaErrors(t *testing.T) {
+	fastRetries(t)
+	fake := &fakeSynthesizer{transient: []error{
+		status.Error(codes.ResourceExhausted, "Resource has been exhausted (e.g. check quota)."),
+		status.Error(codes.Unavailable, "try again"),
+	}}
+	out := filepath.Join(t.TempDir(), "retry.mp3")
+	if _, err := Synthesize(context.Background(), fake, "مرحبا بك", baseOptions(out)); err != nil {
+		t.Fatalf("Synthesize: %v", err)
+	}
+	if fake.calls != 3 || len(fake.requests) != 1 {
+		t.Errorf("calls = %d, successful requests = %d", fake.calls, len(fake.requests))
+	}
+}
+
+func TestSynthesizeGivesUpAfterMaxAttempts(t *testing.T) {
+	fastRetries(t)
+	var quota []error
+	for range maxAttempts + 3 {
+		quota = append(quota, status.Error(codes.ResourceExhausted, "quota"))
+	}
+	fake := &fakeSynthesizer{transient: quota}
+	_, err := Synthesize(context.Background(), fake, "مرحبا بك", baseOptions(filepath.Join(t.TempDir(), "x.mp3")))
+	if status.Code(errors.Unwrap(err)) != codes.ResourceExhausted || !strings.Contains(err.Error(), "--concurrency") {
+		t.Fatalf("err = %v", err)
+	}
+	if fake.calls != maxAttempts {
+		t.Errorf("calls = %d, want %d", fake.calls, maxAttempts)
+	}
+}
+
+func TestSynthesizeDoesNotRetryPermanentErrors(t *testing.T) {
+	fastRetries(t)
+	fake := &fakeSynthesizer{err: status.Error(codes.PermissionDenied, "API not enabled")}
+	_, err := Synthesize(context.Background(), fake, "مرحبا بك", baseOptions(filepath.Join(t.TempDir(), "x.mp3")))
+	if status.Code(err) != codes.PermissionDenied || fake.calls != 1 {
+		t.Fatalf("err = %v after %d calls", err, fake.calls)
 	}
 }

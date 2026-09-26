@@ -3,6 +3,7 @@ package tts
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,8 @@ import (
 
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/scuba-plaza/arabic-tts/audio"
 	"github.com/scuba-plaza/arabic-tts/config"
@@ -53,7 +56,11 @@ type Result struct {
 const (
 	chirpConcurrency   = 4
 	defaultConcurrency = 8
+	maxAttempts        = 7
+	maxBackoff         = 32 * time.Second
 )
+
+var retryBase = time.Second
 
 func IsChirp3(voice string) bool {
 	return strings.Contains(strings.ToLower(voice), "chirp3")
@@ -156,7 +163,7 @@ func Synthesize(ctx context.Context, client gcp.Synthesizer, text string, opts O
 	}
 
 	if len(chunks) == 1 {
-		resp, err := client.SynthesizeSpeech(ctx, opts.request(chunks[0], targetEnc))
+		resp, err := synthesizeWithRetry(ctx, client, opts.request(chunks[0], targetEnc))
 		if err != nil {
 			return Result{}, err
 		}
@@ -184,7 +191,7 @@ func Synthesize(ctx context.Context, client gcp.Synthesizer, text string, opts O
 	for i, chunk := range chunks {
 		i, chunk := i, chunk
 		g.Go(func() error {
-			resp, err := client.SynthesizeSpeech(gctx, opts.request(chunk, texttospeechpb.AudioEncoding_LINEAR16))
+			resp, err := synthesizeWithRetry(gctx, client, opts.request(chunk, texttospeechpb.AudioEncoding_LINEAR16))
 			if err != nil {
 				return fmt.Errorf("chunk %d of %d: %w", i+1, len(chunks), err)
 			}
@@ -251,6 +258,40 @@ func Synthesize(ctx context.Context, client gcp.Synthesizer, text string, opts O
 		Duration: pcmDuration(len(stitched), opts.sampleRate()),
 		Encoded:  encoded,
 	}, nil
+}
+
+func retryable(err error) bool {
+	switch status.Code(err) {
+	case codes.ResourceExhausted, codes.Unavailable, codes.DeadlineExceeded, codes.Aborted, codes.Internal:
+		return true
+	}
+	return false
+}
+
+func synthesizeWithRetry(ctx context.Context, client gcp.Synthesizer, req *texttospeechpb.SynthesizeSpeechRequest) (*texttospeechpb.SynthesizeSpeechResponse, error) {
+	backoff := retryBase
+	for attempt := 1; ; attempt++ {
+		resp, err := client.SynthesizeSpeech(ctx, req)
+		if err == nil {
+			return resp, nil
+		}
+		if !retryable(err) {
+			return nil, err
+		}
+		if attempt == maxAttempts {
+			if status.Code(err) == codes.ResourceExhausted {
+				return nil, fmt.Errorf("%w (quota still exhausted after %d attempts; try a lower --concurrency)", err, maxAttempts)
+			}
+			return nil, err
+		}
+		jitter := time.Duration(rand.Int63n(int64(backoff/2) + 1))
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(backoff + jitter):
+		}
+		backoff = min(backoff*2, maxBackoff)
+	}
 }
 
 func gap2Len(gap []byte, parts int) int {
