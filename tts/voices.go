@@ -7,7 +7,7 @@ import (
 
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
 
-	"arabic-tts/internal/gcp"
+	"github.com/scuba-plaza/arabic-tts/gcp"
 )
 
 type VoiceInfo struct {

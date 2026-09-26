@@ -1,4 +1,4 @@
-module arabic-tts
+module github.com/scuba-plaza/arabic-tts
 
 go 1.26.7
 

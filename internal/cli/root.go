@@ -7,7 +7,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"arabic-tts/internal/config"
+	"github.com/scuba-plaza/arabic-tts/config"
 )
 
 const (

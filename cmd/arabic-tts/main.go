@@ -6,7 +6,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"arabic-tts/internal/cli"
+	"github.com/scuba-plaza/arabic-tts/internal/cli"
 )
 
 func main() {

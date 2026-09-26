@@ -141,7 +141,7 @@ make roundtrip  # synthesize a phrase, then transcribe it back
 ```
 
 `go test ./...` never calls Google: the API surface is narrowed to two
-interfaces in `internal/gcp` and the tests supply fakes. The live tests are
+interfaces in `gcp` and the tests supply fakes. The live tests are
 behind a build tag and an environment variable:
 
 ```sh
@@ -150,15 +150,44 @@ make integration   # ARABIC_TTS_INTEGRATION=1 go test -tags integration ...
 
 Both Chirp 3 tiers are premium. Check current pricing before long runs.
 
+## Use as a Go library
+
+Everything except the CLI is importable:
+
+```sh
+go get github.com/scuba-plaza/arabic-tts
+```
+
+```go
+creds, err := config.ResolveCredentials("")
+if err != nil {
+	return err
+}
+client, err := gcp.NewTextToSpeechClient(ctx, creds)
+if err != nil {
+	return err
+}
+defer client.Close()
+_, err = tts.Synthesize(ctx, client, "مَرْحَبًا بِكَ", tts.Options{
+	Voice:    config.DefaultVoice,
+	Language: config.DefaultLanguage,
+	Output:   "out/hello.mp3",
+})
+```
+
+Transcription works the same way with `gcp.NewSpeechClient` and
+`stt.TranscribeFile`. [arabic-vocab](https://github.com/scuba-plaza/arabic-vocab)
+uses both to voice and verify its Anki deck.
+
 ## Layout
 
 ```
 cmd/arabic-tts      entry point
 internal/cli        cobra commands, error explanation, exit codes
-internal/config     credential discovery and defaults
-internal/gcp        client construction, narrow interfaces
-internal/tts        text splitting, concurrent synthesis, voice listing
-internal/stt        silence segmentation, concurrent recognition, formatters
-internal/audio      ffmpeg wrapper, pure-Go WAV reader and writer
-internal/arabic     diacritics, normalisation, RTL helpers
+config              credential discovery and defaults
+gcp                 client construction, narrow interfaces
+tts                 text splitting, concurrent synthesis, voice listing
+stt                 silence segmentation, concurrent recognition, formatters
+audio               ffmpeg wrapper, pure-Go WAV reader and writer
+arabic              diacritics, normalisation, RTL helpers
 ```

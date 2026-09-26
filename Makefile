@@ -13,10 +13,10 @@ vet:
 	go vet ./...
 
 fmt:
-	gofmt -w cmd internal
+	gofmt -w .
 
 lint: vet
-	gofmt -l cmd internal
+	gofmt -l .
 
 integration:
 	ARABIC_TTS_INTEGRATION=1 go test -tags integration -run Live -v ./internal/cli/

@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"arabic-tts/internal/arabic"
+	"github.com/scuba-plaza/arabic-tts/arabic"
 )
 
 type Format string

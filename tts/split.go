@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"arabic-tts/internal/arabic"
+	"github.com/scuba-plaza/arabic-tts/arabic"
 )
 
 func Split(text string, budget int) []string {

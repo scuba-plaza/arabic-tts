@@ -11,7 +11,7 @@ import (
 	gax "github.com/googleapis/gax-go/v2"
 	"google.golang.org/api/option"
 
-	"arabic-tts/internal/config"
+	"github.com/scuba-plaza/arabic-tts/config"
 )
 
 type Recognizer interface {
