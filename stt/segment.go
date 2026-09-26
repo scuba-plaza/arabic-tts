@@ -3,7 +3,7 @@ package stt
 import (
 	"sort"
 
-	"arabic-tts/internal/audio"
+	"github.com/scuba-plaza/arabic-tts/audio"
 )
 
 type Segment struct {

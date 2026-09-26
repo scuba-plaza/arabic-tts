@@ -5,7 +5,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"arabic-tts/internal/arabic"
+	"github.com/scuba-plaza/arabic-tts/arabic"
 )
 
 const sentence = "السلام عليكم ورحمة الله وبركاته، هذا اختبار للنظام. "

@@ -13,9 +13,9 @@ import (
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
 	"github.com/spf13/cobra"
 
-	"arabic-tts/internal/audio"
-	"arabic-tts/internal/config"
-	"arabic-tts/internal/gcp"
+	"github.com/scuba-plaza/arabic-tts/audio"
+	"github.com/scuba-plaza/arabic-tts/config"
+	"github.com/scuba-plaza/arabic-tts/gcp"
 )
 
 type check struct {

@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"arabic-tts/internal/config"
-	"arabic-tts/internal/gcp"
-	"arabic-tts/internal/tts"
+	"github.com/scuba-plaza/arabic-tts/config"
+	"github.com/scuba-plaza/arabic-tts/gcp"
+	"github.com/scuba-plaza/arabic-tts/tts"
 )
 
 func newVoicesCommand() *cobra.Command {

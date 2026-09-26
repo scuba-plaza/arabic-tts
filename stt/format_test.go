@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"arabic-tts/internal/arabic"
+	"github.com/scuba-plaza/arabic-tts/arabic"
 )
 
 func sample() *Transcript {

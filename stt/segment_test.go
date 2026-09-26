@@ -3,7 +3,7 @@ package stt
 import (
 	"testing"
 
-	"arabic-tts/internal/audio"
+	"github.com/scuba-plaza/arabic-tts/audio"
 )
 
 func checkInvariants(t *testing.T, segs []Segment, duration, max float64) {

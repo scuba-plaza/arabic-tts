@@ -8,9 +8,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"arabic-tts/internal/audio"
-	"arabic-tts/internal/config"
-	"arabic-tts/internal/stt"
+	"github.com/scuba-plaza/arabic-tts/audio"
+	"github.com/scuba-plaza/arabic-tts/config"
+	"github.com/scuba-plaza/arabic-tts/stt"
 )
 
 type usageError struct{ error }

@@ -13,7 +13,7 @@ import (
 	"cloud.google.com/go/texttospeech/apiv1/texttospeechpb"
 	gax "github.com/googleapis/gax-go/v2"
 
-	"arabic-tts/internal/audio"
+	"github.com/scuba-plaza/arabic-tts/audio"
 )
 
 type fakeSynthesizer struct {
